@@ -20,6 +20,7 @@ class QueryOptions<TData, TError> {
     this.staleDuration,
     this.gcDuration,
     this.placeholder,
+    this.keepPreviousData,
     this.refetchOnMount,
     this.refetchOnResume,
     this.refetchOnReconnect,
@@ -51,6 +52,9 @@ class QueryOptions<TData, TError> {
 
   /// Placeholder data shown while the query is loading.
   final TData? placeholder;
+
+  /// Whether to keep previous data as a placeholder while the query is pending.
+  final bool? keepPreviousData;
 
   /// Whether to refetch when an observer mounts.
   final RefetchOnMount? refetchOnMount;
@@ -94,6 +98,7 @@ class QueryOptions<TData, TError> {
           staleDuration == other.staleDuration &&
           gcDuration == other.gcDuration &&
           deepEq.equals(placeholder, other.placeholder) &&
+          keepPreviousData == other.keepPreviousData &&
           refetchOnMount == other.refetchOnMount &&
           refetchOnResume == other.refetchOnResume &&
           refetchOnReconnect == other.refetchOnReconnect &&
@@ -113,6 +118,7 @@ class QueryOptions<TData, TError> {
         staleDuration,
         gcDuration,
         deepEq.hash(placeholder),
+        keepPreviousData,
         refetchOnMount,
         refetchOnResume,
         refetchOnReconnect,
@@ -132,6 +138,7 @@ class QueryOptions<TData, TError> {
       'staleDuration: $staleDuration, '
       'gcDuration: $gcDuration, '
       'placeholder: $placeholder, '
+      'keepPreviousData: $keepPreviousData, '
       'refetchOnMount: $refetchOnMount, '
       'refetchOnResume: $refetchOnResume, '
       'refetchOnReconnect: $refetchOnReconnect, '
@@ -157,6 +164,7 @@ extension QueryOptionsExt<TData, TError> on QueryOptions<TData, TError> {
       staleDuration: staleDuration ?? defaults.staleDuration,
       gcDuration: gcDuration ?? defaults.gcDuration,
       placeholder: placeholder,
+      keepPreviousData: keepPreviousData ?? defaults.keepPreviousData,
       refetchOnMount: refetchOnMount ?? defaults.refetchOnMount,
       refetchOnResume: refetchOnResume ?? defaults.refetchOnResume,
       refetchOnReconnect: refetchOnReconnect ?? defaults.refetchOnReconnect,

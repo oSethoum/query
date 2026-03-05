@@ -28,6 +28,7 @@ class DefaultQueryOptions {
     this.refetchOnMount = RefetchOnMount.stale,
     this.refetchOnResume = RefetchOnResume.stale,
     this.refetchOnReconnect = RefetchOnReconnect.stale,
+    this.keepPreviousData = false,
     this.retry,
     this.retryOnMount = true,
     this.meta,
@@ -81,6 +82,11 @@ class DefaultQueryOptions {
   /// If not provided, this option has no effect.
   final RefetchOnReconnect refetchOnReconnect;
 
+  /// Whether to keep previous data as a placeholder by default.
+  ///
+  /// Defaults to `false`.
+  final bool keepPreviousData;
+
   /// Retry behavior for failed queries.
   ///
   /// When `null`, uses the query's own retry configuration. Defaults to `null`.
@@ -109,6 +115,7 @@ class DefaultQueryOptions {
           refetchOnMount == other.refetchOnMount &&
           refetchOnResume == other.refetchOnResume &&
           refetchOnReconnect == other.refetchOnReconnect &&
+          keepPreviousData == other.keepPreviousData &&
           identical(retry, other.retry) &&
           retryOnMount == other.retryOnMount &&
           deepEq.equals(meta, other.meta);
@@ -123,6 +130,7 @@ class DefaultQueryOptions {
         refetchOnMount,
         refetchOnResume,
         refetchOnReconnect,
+        keepPreviousData,
         identityHashCode(retry),
         retryOnMount,
         meta,
@@ -138,6 +146,7 @@ class DefaultQueryOptions {
       'refetchOnMount: $refetchOnMount, '
       'refetchOnResume: $refetchOnResume, '
       'refetchOnReconnect: $refetchOnReconnect, '
+      'keepPreviousData: $keepPreviousData, '
       'retry: $retry, '
       'retryOnMount: $retryOnMount, '
       'meta: $meta)';

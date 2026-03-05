@@ -36,6 +36,7 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
   late Query<TData, TError> _query;
   late int _initialDataUpdateCount;
   late int _initialErrorUpdateCount;
+  TData? _previousData;
 
   Timer? _refetchIntervalTimer;
 
@@ -60,6 +61,11 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
 
     // Handle query key change separately - requires switching queries
     if (newOptions.key != oldOptions.key) {
+      if (newOptions.keepPreviousData == true && _query.state.data != null) {
+        _previousData = _query.state.data;
+      } else {
+        _previousData = null;
+      }
       _query.removeObserver(this);
       onMount();
       return;
@@ -79,6 +85,8 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
     final didRetryChange = !identical(newOptions.retry, oldOptions.retry);
     final didRetryOnMountChange =
         newOptions.retryOnMount != oldOptions.retryOnMount;
+    final didKeepPreviousDataChange =
+        newOptions.keepPreviousData != oldOptions.keepPreviousData;
 
     // If nothing changed, return early
     if (!didEnabledChange &&
@@ -88,7 +96,8 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
         !didRefetchOnResumeChange &&
         !didRefetchIntervalChange &&
         !didRetryChange &&
-        !didRetryOnMountChange) {
+        !didRetryOnMountChange &&
+        !didKeepPreviousDataChange) {
       return;
     }
 
@@ -97,7 +106,8 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
         didPlaceholderChange ||
         didRefetchOnMountChange ||
         didRefetchOnResumeChange ||
-        didRetryOnMountChange;
+        didRetryOnMountChange ||
+        didKeepPreviousDataChange;
 
     final mayFetch = didEnabledChange ||
         didStaleDurationChange ||
@@ -357,12 +367,16 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
     QueryState<TData, TError> state, {
     bool optimistic = false,
   }) {
+    final isPreviousData = options.keepPreviousData == true &&
+        _previousData != null &&
+        state.status == QueryStatus.pending;
+
     final result = QueryResult<TData, TError>(
-      status: state.status,
+      status: isPreviousData ? QueryStatus.success : state.status,
       fetchStatus: optimistic && _shouldFetchOnMount(options, state)
           ? FetchStatus.fetching
           : state.fetchStatus,
-      data: state.data,
+      data: isPreviousData ? _previousData : state.data,
       dataUpdatedAt: state.dataUpdatedAt,
       dataUpdateCount: state.dataUpdateCount,
       error: state.error,
@@ -373,11 +387,13 @@ class QueryObserver<TData, TError> with Observer<QueryState<TData, TError>> {
           _query.shouldFetch(options.staleDuration ?? StaleDuration.zero),
       isFetchedAfterMount: state.dataUpdateCount > _initialDataUpdateCount ||
           state.errorUpdateCount > _initialErrorUpdateCount,
-      isPlaceholderData: false,
+      isPlaceholderData: isPreviousData,
       failureCount: state.failureCount,
       failureReason: state.failureReason,
       refetch: refetch,
     );
-    return result.withPlaceholder(options.placeholder);
+    return isPreviousData
+        ? result
+        : result.withPlaceholder(options.placeholder);
   }
 }

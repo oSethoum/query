@@ -57,7 +57,10 @@ class QueryClient {
     this.defaultQueryOptions = const DefaultQueryOptions(),
     this.defaultMutationOptions = const DefaultMutationOptions(),
     Stream<bool>? connectivityChanges,
-  }) {
+    QueryCache? cache,
+    MutationCache? mutationCache,
+  })  : _cache = cache ?? QueryCache(),
+        _mutationCache = mutationCache ?? MutationCache() {
     connectivityChanges?.listen((online) {
       final wasOnline = _isOnline;
       _isOnline = online;
@@ -88,8 +91,8 @@ class QueryClient {
     });
   }
 
-  final QueryCache _cache = QueryCache();
-  final MutationCache _mutationCache = MutationCache();
+  final QueryCache _cache;
+  final MutationCache _mutationCache;
 
   bool _isOnline = true;
 

@@ -53,6 +53,7 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
     this.staleDuration,
     this.gcDuration,
     this.placeholder,
+    this.keepPreviousData,
     this.refetchOnMount,
     this.refetchOnResume,
     this.refetchOnReconnect,
@@ -96,6 +97,9 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
 
   /// Placeholder data shown while the query is loading.
   final InfiniteData<TData, TPageParam>? placeholder;
+
+  /// Whether to keep previous data as a placeholder while the query is pending.
+  final bool? keepPreviousData;
 
   /// Whether to refetch when an observer mounts.
   final RefetchOnMount? refetchOnMount;
@@ -143,6 +147,7 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
           staleDuration == other.staleDuration &&
           gcDuration == other.gcDuration &&
           deepEq.equals(placeholder, other.placeholder) &&
+          keepPreviousData == other.keepPreviousData &&
           refetchOnMount == other.refetchOnMount &&
           refetchOnResume == other.refetchOnResume &&
           refetchOnReconnect == other.refetchOnReconnect &&
@@ -154,7 +159,7 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
           deepEq.equals(meta, other.meta);
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
         key,
         identityHashCode(queryFn),
         deepEq.hash(initialPageParam),
@@ -166,6 +171,7 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
         staleDuration,
         gcDuration,
         deepEq.hash(placeholder),
+        keepPreviousData,
         refetchOnMount,
         refetchOnResume,
         refetchOnReconnect,
@@ -175,7 +181,7 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
         deepEq.hash(seed),
         seedUpdatedAt,
         deepEq.hash(meta),
-      );
+      ]);
 
   @override
   String toString() => 'InfiniteQueryOptions('
@@ -187,6 +193,7 @@ class InfiniteQueryOptions<TData, TError, TPageParam> {
       'staleDuration: $staleDuration, '
       'gcDuration: $gcDuration, '
       'placeholder: $placeholder, '
+      'keepPreviousData: $keepPreviousData, '
       'refetchOnMount: $refetchOnMount, '
       'refetchOnResume: $refetchOnResume, '
       'refetchOnReconnect: $refetchOnReconnect, '
@@ -215,6 +222,7 @@ extension InfiniteQueryOptionsExt<TData, TError, TPageParam>
       staleDuration: staleDuration ?? defaults.staleDuration,
       gcDuration: gcDuration ?? defaults.gcDuration,
       placeholder: placeholder,
+      keepPreviousData: keepPreviousData ?? defaults.keepPreviousData,
       refetchOnMount: refetchOnMount ?? defaults.refetchOnMount,
       refetchOnResume: refetchOnResume ?? defaults.refetchOnResume,
       refetchOnReconnect: refetchOnReconnect ?? defaults.refetchOnReconnect,
