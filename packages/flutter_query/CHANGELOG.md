@@ -6,6 +6,19 @@
 
 - Exposed `MutateFn` typedef.
 
+- **BREAKING**: Restored `RefetchType` enum. `invalidateQueries()` is now async again and accepts a `refetchType` parameter (defaults to `RefetchType.active`) to control which queries are automatically refetched after invalidation.
+
+  ```dart
+  // Invalidate and refetch active queries (default)
+  await client.invalidateQueries(queryKey: ['users']);
+
+  // Invalidate without refetching
+  client.invalidateQueries(
+    queryKey: ['users'],
+    refetchType: RefetchType.none,
+  );
+  ```
+
 ## 0.6.0 (2025-02-03)
 
 This release contains breaking changes to improve API consistency and usability.
@@ -102,17 +115,6 @@ This release contains breaking changes to improve API consistency and usability.
     const ['users', id],
     (context) async => fetchUser(id),
   );
-  ```
-
-- **BREAKING**: Removed `RefetchType` enum. `invalidateQueries()` now only marks queries as stale without automatically refetching. Call `refetchQueries()` separately with a predicate to refetch specific queries.
-
-  ```dart
-  // Before
-  await client.invalidateQueries(refetchType: RefetchType.active);
-
-  // After
-  client.invalidateQueries();
-  await client.refetchQueries(predicate: (state) => state.isActive);
   ```
 
 - **BREAKING**: Predicate callbacks now receive immutable `QueryState` and `MutationState` objects instead of `Query` and `Mutation` instances, with the key passed as a separate first parameter.
