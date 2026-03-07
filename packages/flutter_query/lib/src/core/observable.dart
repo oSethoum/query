@@ -36,7 +36,7 @@ mixin Observable<TValue, TObserver extends Observer<TValue>> {
   }
 
   void notifyObservers(TValue value) {
-    for (final observer in _observers) {
+    for (final observer in [..._observers]) {
       observer.onNotified(value);
     }
   }

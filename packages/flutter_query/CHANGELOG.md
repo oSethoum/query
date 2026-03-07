@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Fixed crashes when multiple screens share the same query key ([#40](https://github.com/jezsung/query/issues/40)).
 
 - Added `ensureQueryData` method to `QueryClient`. This method returns cached data if available (even if stale) or fetches it if missing. It also supports a `revalidateIfStale` option to trigger a background refetch if the cached data is stale.
 
