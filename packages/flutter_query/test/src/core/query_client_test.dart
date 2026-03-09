@@ -1519,7 +1519,11 @@ void main() {
         (context) async => 'data',
       );
       async.flushMicrotasks();
-      client.invalidateQueries(queryKey: const ['key'], exact: true);
+      client.invalidateQueries(
+        queryKey: const ['key'],
+        exact: true,
+        refetchType: RefetchType.none,
+      );
 
       expect(
         cache.get<String, Object>(const ['key'])!.state.isInvalidated,
@@ -1608,7 +1612,11 @@ void main() {
       );
       async.elapse(const Duration(seconds: 1));
 
-      client.invalidateQueries(queryKey: const ['key'], exact: false);
+      client.invalidateQueries(
+        queryKey: const ['key'],
+        exact: false,
+        refetchType: RefetchType.none,
+      );
 
       final query1 = cache.get(const ['key', 1]);
       final query2 = cache.get(const ['key', 2]);
@@ -1638,7 +1646,11 @@ void main() {
       );
       async.elapse(const Duration(seconds: 1));
 
-      client.invalidateQueries(queryKey: const ['key'], exact: true);
+      client.invalidateQueries(
+        queryKey: const ['key'],
+        exact: true,
+        refetchType: RefetchType.none,
+      );
 
       final query1 = cache.get(const ['key']);
       final query2 = cache.get(const ['key', 1]);
@@ -1666,7 +1678,10 @@ void main() {
       );
       async.elapse(const Duration(seconds: 1));
 
-      client.invalidateQueries(predicate: (key, state) => key.last == 2);
+      client.invalidateQueries(
+        predicate: (key, state) => key.last == 2,
+        refetchType: RefetchType.none,
+      );
 
       final query1 = cache.get(const ['key', 1]);
       final query2 = cache.get(const ['key', 2]);
@@ -1727,7 +1742,7 @@ void main() {
       )..onMount();
       async.elapse(const Duration(seconds: 1));
 
-      client.invalidateQueries();
+      client.invalidateQueries(refetchType: RefetchType.none);
 
       expect(cache.get(const ['key', 1])!.state.isInvalidated, isTrue);
       expect(cache.get(const ['key', 2])!.state.isInvalidated, isTrue);
@@ -1738,6 +1753,275 @@ void main() {
       activeObserver1.onUnmount();
       activeObserver2.onUnmount();
       disabledObserver.onUnmount();
+    }));
+
+    test(
+        'SHOULD invalidate but NOT refetch any queries '
+        'WHEN refetchType == RefetchType.none', withFakeAsync((async) {
+      var activeQueryFetches = 0;
+      var inactiveQueryFetches = 0;
+
+      final activeObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['active'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            activeQueryFetches++;
+            return 'data-active';
+          },
+          enabled: true,
+        ),
+      )..onMount();
+      addTearDown(activeObserver.onUnmount);
+
+      final inactiveObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['inactive'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            inactiveQueryFetches++;
+            return 'data-inactive';
+          },
+          enabled: false,
+        ),
+      )..onMount();
+      addTearDown(inactiveObserver.onUnmount);
+
+      // Fetch the inactive query manually so it has data
+      client.fetchQuery(
+        const ['inactive'],
+        (context) async {
+          await Future.delayed(const Duration(seconds: 1));
+          inactiveQueryFetches++;
+          return 'data-inactive';
+        },
+      );
+
+      // Wait for initial fetches
+      async.elapse(const Duration(seconds: 1));
+      expect(activeQueryFetches, 1);
+      expect(inactiveQueryFetches, 1);
+
+      client.invalidateQueries(refetchType: RefetchType.none);
+      async.elapse(const Duration(seconds: 1));
+
+      final query1 = cache.get(const ['active']);
+      final query2 = cache.get(const ['inactive']);
+
+      // Should have been invalidated
+      expect(query1!.state.isInvalidated, isTrue);
+      expect(query2!.state.isInvalidated, isTrue);
+      // Should NOT have refetched any queries
+      expect(activeQueryFetches, 1);
+      expect(inactiveQueryFetches, 1);
+    }));
+
+    test(
+        'SHOULD ONLY refetch active queries '
+        'WHEN refetchType == RefetchType.active', withFakeAsync((async) {
+      var activeQueryFetches = 0;
+      var inactiveQueryFetches = 0;
+
+      final activeObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['active'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            activeQueryFetches++;
+            return 'data-active';
+          },
+          enabled: true,
+        ),
+      )..onMount();
+      addTearDown(activeObserver.onUnmount);
+
+      final inactiveObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['inactive'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            inactiveQueryFetches++;
+            return 'data-inactive';
+          },
+          enabled: false,
+        ),
+      )..onMount();
+      addTearDown(inactiveObserver.onUnmount);
+
+      // Fetch the inactive query manually so it has data
+      client.fetchQuery(
+        const ['inactive'],
+        (context) async {
+          await Future.delayed(const Duration(seconds: 1));
+          inactiveQueryFetches++;
+          return 'data-inactive';
+        },
+      );
+
+      // Wait for initial fetches
+      async.elapse(const Duration(seconds: 1));
+      expect(activeQueryFetches, 1);
+      expect(inactiveQueryFetches, 1);
+
+      client.invalidateQueries(refetchType: RefetchType.active);
+      async.elapse(const Duration(seconds: 1));
+
+      // Should have refetched active query
+      expect(activeQueryFetches, 2);
+      // Should NOT have refetched inactive query
+      expect(inactiveQueryFetches, 1);
+    }));
+
+    test(
+        'SHOULD ONLY refetch inactive queries '
+        'WHEN refetchType == RefetchType.inactive', withFakeAsync((async) {
+      var activeQueryFetches = 0;
+      var inactiveQueryFetches = 0;
+
+      final activeObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['active'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            activeQueryFetches++;
+            return 'data-active';
+          },
+          enabled: true,
+        ),
+      )..onMount();
+      addTearDown(activeObserver.onUnmount);
+
+      final inactiveObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['inactive'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            inactiveQueryFetches++;
+            return 'data-inactive';
+          },
+          enabled: false,
+        ),
+      )..onMount();
+      addTearDown(inactiveObserver.onUnmount);
+
+      // Fetch the inactive query manually so it has data
+      client.fetchQuery(
+        const ['inactive'],
+        (context) async {
+          await Future.delayed(const Duration(seconds: 1));
+          inactiveQueryFetches++;
+          return 'data-inactive';
+        },
+      );
+
+      // Wait for initial fetches
+      async.elapse(const Duration(seconds: 1));
+      expect(activeQueryFetches, 1);
+      expect(inactiveQueryFetches, 1);
+
+      client.invalidateQueries(refetchType: RefetchType.inactive);
+      async.elapse(const Duration(seconds: 1));
+
+      // Should NOT have refetched active query
+      expect(activeQueryFetches, 1);
+      // Should have refetched inactive query
+      expect(inactiveQueryFetches, 2);
+    }));
+
+    test(
+        'SHOULD refetch all queries '
+        'WHEN refetchType == RefetchType.all', withFakeAsync((async) {
+      var activeQueryFetches = 0;
+      var inactiveQueryFetches = 0;
+
+      final activeObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['active'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            activeQueryFetches++;
+            return 'data-active';
+          },
+          enabled: true,
+        ),
+      )..onMount();
+      addTearDown(activeObserver.onUnmount);
+
+      final inactiveObserver = QueryObserver(
+        client,
+        QueryOptions(
+          const ['inactive'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            inactiveQueryFetches++;
+            return 'data-inactive';
+          },
+          enabled: false,
+        ),
+      )..onMount();
+      addTearDown(inactiveObserver.onUnmount);
+
+      // Fetch the inactive query manually so it has data
+      client.fetchQuery(
+        const ['inactive'],
+        (context) async {
+          await Future.delayed(const Duration(seconds: 1));
+          inactiveQueryFetches++;
+          return 'data-inactive';
+        },
+      );
+
+      // Wait for initial fetches
+      async.elapse(const Duration(seconds: 1));
+      expect(activeQueryFetches, 1);
+      expect(inactiveQueryFetches, 1);
+
+      client.invalidateQueries(refetchType: RefetchType.all);
+      async.elapse(const Duration(seconds: 1));
+
+      // Should have refetched all queries
+      expect(activeQueryFetches, 2);
+      expect(inactiveQueryFetches, 2);
+    }));
+
+    test(
+        'SHOULD reset isInvalidated after refetch'
+        '', withFakeAsync((async) {
+      final observer = QueryObserver(
+        client,
+        QueryOptions(
+          const ['key'],
+          (context) async {
+            await Future.delayed(const Duration(seconds: 1));
+            return 'data';
+          },
+          enabled: true,
+        ),
+      )..onMount();
+      addTearDown(observer.onUnmount);
+
+      // Wait for initial fetch
+      async.elapse(const Duration(seconds: 1));
+
+      client.invalidateQueries(refetchType: RefetchType.all);
+
+      // Should have invalidated query
+      var query = cache.get(const ['key']);
+      expect(query!.state.isInvalidated, isTrue);
+
+      // Wait for refetch
+      async.elapse(const Duration(seconds: 1));
+
+      // Should have reset isInvalidated
+      query = cache.get(const ['key']);
+      expect(query!.state.isInvalidated, isFalse);
     }));
   });
 

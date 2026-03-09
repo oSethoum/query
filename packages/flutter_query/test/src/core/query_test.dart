@@ -926,4 +926,69 @@ void main() {
       expect(query.matchesWhere((key, state) => key[0] == 'posts'), isFalse);
     });
   });
+
+  group('Misc', () {
+    test(
+        'SHOULD NOT throw ConcurrentModificationError '
+        'WHEN observer is removed during notification', withFakeAsync((async) {
+      final query = Query<String, Object>.cached(client, const ['key']);
+
+      final observer1 = QueryObserver<String, Object>(
+        client,
+        QueryOptions(const ['key'], (context) async => 'data'),
+      )..onMount();
+
+      final observer2 = QueryObserver<String, Object>(
+        client,
+        QueryOptions(const ['key'], (context) async => 'data'),
+      )..onMount();
+
+      // Both observers are on the same query
+      expect(query.observers.length, 2);
+
+      // Trigger fetch — when it completes, notifyObservers iterates the list.
+      // observer1 unmounting during notification should not throw.
+      observer1.subscribe((_) {
+        observer2.onUnmount();
+      });
+
+      async.flushMicrotasks();
+
+      // Should complete without ConcurrentModificationError
+      expect(query.state.status, QueryStatus.success);
+    }));
+
+    test(
+        'SHOULD NOT throw ConcurrentModificationError '
+        'WHEN observer is added during notification', withFakeAsync((async) {
+      final query = Query<String, Object>.cached(client, const ['key']);
+
+      final observer1 = QueryObserver<String, Object>(
+        client,
+        QueryOptions(const ['key'], (context) async => 'data'),
+      )..onMount();
+
+      late QueryObserver<String, Object> observer3;
+      var added = false;
+
+      observer1.subscribe((_) {
+        if (!added) {
+          added = true;
+          observer3 = QueryObserver<String, Object>(
+            client,
+            QueryOptions(const ['key'], (context) async => 'data'),
+          )..onMount();
+        }
+      });
+
+      async.flushMicrotasks();
+
+      // Should complete without ConcurrentModificationError
+      expect(query.state.status, QueryStatus.success);
+
+      // Cleanup
+      observer3.onUnmount();
+      observer1.onUnmount();
+    }));
+  });
 }

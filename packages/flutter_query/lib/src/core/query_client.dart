@@ -16,6 +16,25 @@ import 'query_options.dart';
 import 'query_state.dart';
 import 'utils.dart';
 
+/// Controls which queries are refetched when calling [QueryClient.invalidateQueries].
+///
+/// By default, [invalidateQueries] marks matching queries as stale and
+/// automatically refetches active ones. Use this enum to change which queries
+/// are refetched after invalidation.
+enum RefetchType {
+  /// Refetch only queries that have at least one enabled observer.
+  active,
+
+  /// Refetch only queries that have no enabled observers.
+  inactive,
+
+  /// Refetch all matching queries regardless of observer state.
+  all,
+
+  /// Don't refetch any queries, just mark them as stale.
+  none,
+}
+
 /// The central hub for managing cached queries and mutations.
 ///
 /// Provides imperative methods to fetch, prefetch, invalidate, and update
@@ -338,11 +357,11 @@ class QueryClient {
     return query.setData(data, updatedAt: updatedAt);
   }
 
-  /// Marks matching queries as stale.
+  /// Marks matching queries as stale and optionally refetches them.
   ///
-  /// Invalidated queries refetch when a new observer subscribes to them. This
-  /// method does not trigger an immediate refetch; use [refetchQueries] for
-  /// that.
+  /// By default, invalidated active queries are immediately refetched. Use the
+  /// [refetchType] parameter to control which queries are refetched after
+  /// invalidation.
   ///
   /// The [queryKey] filters which queries to invalidate. When [exact] is false
   /// (default), all queries whose keys start with [queryKey] are included.
@@ -352,17 +371,21 @@ class QueryClient {
   /// state. Only queries for which it returns true are invalidated.
   ///
   /// ```dart
-  /// // Invalidate all queries
-  /// client.invalidateQueries();
+  /// // Invalidate and refetch active queries
+  /// await client.invalidateQueries();
   ///
   /// // Invalidate queries with a specific key prefix
-  /// client.invalidateQueries(queryKey: ['users']);
+  /// await client.invalidateQueries(queryKey: ['users']);
+  ///
+  /// // Invalidate without refetching
+  /// client.invalidateQueries(refetchType: RefetchType.none);
   /// ```
-  void invalidateQueries({
+  Future<void> invalidateQueries({
     List<Object?>? queryKey,
     bool exact = false,
     bool Function(List<Object?> queryKey, QueryState state)? predicate,
-  }) {
+    RefetchType refetchType = RefetchType.active,
+  }) async {
     final queries = _cache.findAll(
       queryKey: queryKey,
       exact: exact,
@@ -372,6 +395,37 @@ class QueryClient {
     for (final query in queries) {
       query.invalidate();
     }
+
+    if (refetchType == RefetchType.none) return;
+
+    final queriesToRefetch = queries.where((q) {
+      if (q.observers.isEmpty ||
+          q.isStatic ||
+          q.state.fetchStatus == FetchStatus.paused) {
+        return false;
+      }
+      switch (refetchType) {
+        case RefetchType.active:
+          return q.isActive;
+        case RefetchType.inactive:
+          return !q.isActive;
+        case RefetchType.all:
+          return true;
+        case RefetchType.none:
+          return false;
+      }
+    });
+
+    await Future.wait(queriesToRefetch.map((q) {
+      final observer = q.observers.first;
+      return q
+          .fetch(
+            observer.options.queryFn,
+            retry: observer.options.retry,
+            meta: observer.options.meta,
+          )
+          .suppress();
+    }));
   }
 
   /// Triggers an immediate refetch for matching queries.

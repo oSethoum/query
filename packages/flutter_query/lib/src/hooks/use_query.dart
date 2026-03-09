@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -170,9 +171,25 @@ QueryResult<TData, TError> useQuery<TData, TError>(
   // Uses useState with useEffect subscription for synchronous updates
   final result = useState(observer.result);
 
+  if (result.value != observer.result) {
+    result.value = observer.result;
+  }
+
   useEffect(() {
     final unsubscribe = observer.subscribe((newResult) {
-      result.value = newResult;
+      // During the build phase, another widget sharing the same query key may
+      // trigger a state change. Setting result.value here would call
+      // markNeedsBuild on this element while a different element is building,
+      // which Flutter forbids. Deferring to a post-frame callback avoids the
+      // error while still delivering the update in the next frame.
+      if (SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.persistentCallbacks) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          result.value = newResult;
+        });
+      } else {
+        result.value = newResult;
+      }
     });
     return unsubscribe;
   }, [observer]);

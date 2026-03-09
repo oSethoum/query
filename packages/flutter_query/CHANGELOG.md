@@ -1,11 +1,25 @@
-## Unreleased
+## 0.7.0 (2026-03-08)
 
+- Fixed crashes when multiple screens share the same query key ([#40](https://github.com/jezsung/query/issues/40)).
 
 - Added `ensureQueryData` method to `QueryClient`. This method returns cached data if available (even if stale) or fetches it if missing. It also supports a `revalidateIfStale` option to trigger a background refetch if the cached data is stale.
 
 - Exposed `MutateFn` typedef.
 
-## 0.6.0 (2025-02-03)
+- **BREAKING**: Restored `RefetchType` enum. `invalidateQueries()` is now async again and accepts a `refetchType` parameter (defaults to `RefetchType.active`) to control which queries are automatically refetched after invalidation.
+
+  ```dart
+  // Invalidate and refetch active queries (default)
+  await client.invalidateQueries(queryKey: ['users']);
+
+  // Invalidate without refetching
+  client.invalidateQueries(
+    queryKey: ['users'],
+    refetchType: RefetchType.none,
+  );
+  ```
+
+## 0.6.0 (2026-02-03)
 
 This release contains breaking changes to improve API consistency and usability.
 
@@ -103,17 +117,6 @@ This release contains breaking changes to improve API consistency and usability.
   );
   ```
 
-- **BREAKING**: Removed `RefetchType` enum. `invalidateQueries()` now only marks queries as stale without automatically refetching. Call `refetchQueries()` separately with a predicate to refetch specific queries.
-
-  ```dart
-  // Before
-  await client.invalidateQueries(refetchType: RefetchType.active);
-
-  // After
-  client.invalidateQueries();
-  await client.refetchQueries(predicate: (state) => state.isActive);
-  ```
-
 - **BREAKING**: Predicate callbacks now receive immutable `QueryState` and `MutationState` objects instead of `Query` and `Mutation` instances, with the key passed as a separate first parameter.
 
   ```dart
@@ -153,7 +156,7 @@ This release contains breaking changes to improve API consistency and usability.
 - `QueryClientProvider` now supports lazy initialization via the `lazy` parameter
 - `QueryClientProvider` now automatically clears the `QueryClient` when removed from the widget tree (when using the default constructor)
 
-## 0.5.1 (2025-01-14)
+## 0.5.1 (2026-01-14)
 
 This release adds support for infinite/paginated queries.
 
@@ -163,7 +166,7 @@ This release adds support for infinite/paginated queries.
 - `maxPages` option to limit the number of accumulated pages
 - Full support for all standard query options (caching, refetching, retry, etc.)
 
-## 0.4.0 (2025-01-08)
+## 0.4.0 (2026-01-08)
 
 This release aligns the API with TanStack Query v5.
 
